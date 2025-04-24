@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Date;
 
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,6 +45,7 @@ public class StripeWebhookController {
             switch (event.getType()) {
                 case "checkout.session.completed":
                     handleCheckoutSessionCompleted(event);
+                    saveEventToMongoDB(event);
                     break;
                 case "payment_intent.succeeded":
                     handlePaymentIntentSucceeded(event);
@@ -54,7 +56,7 @@ public class StripeWebhookController {
                     break;
                 case "charge.updated":
                     handleChargeUpdated(event);
-                    saveEventToMongoDB(event);
+                    // saveEventToMongoDB(event);
                     break;
                 default:
                     log.info("🔄 Unhandled event type: {}", event.getType());
