@@ -3,19 +3,16 @@ package com.biteup.biteup_payment.controller;
 import com.biteup.biteup_payment.Entity.Payment;
 import com.biteup.biteup_payment.repository.PaymentRepository;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Charge;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
+import com.stripe.model.PaymentIntent;
 import com.stripe.model.StripeObject;
 import com.stripe.model.checkout.Session;
-import com.stripe.model.Charge;
-import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
+import java.util.Date;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.Date;
-
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,172 +21,203 @@ import org.springframework.web.bind.annotation.*;
 @AllArgsConstructor
 public class StripeWebhookController {
 
-    private static final String ENDPOINT_SECRET = "whsec_0190a4ce93bc603b89e4add930134438544e02b373a9fa0d3c20b08c12679318";
-    private final PaymentRepository paymentRepository;
+  private static final String ENDPOINT_SECRET =
+    "whsec_0190a4ce93bc603b89e4add930134438544e02b373a9fa0d3c20b08c12679318";
+  private final PaymentRepository paymentRepository;
 
-    @PostMapping("/webhook")
-    public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload,
-            @RequestHeader("Stripe-Signature") String sigHeader) {
-        log.info("🔔 Webhook received");
+  @PostMapping("/webhook")
+  public ResponseEntity<String> handleStripeWebhook(
+    @RequestBody String payload,
+    @RequestHeader("Stripe-Signature") String sigHeader
+  ) {
+    log.info("🔔 Webhook received");
 
-        Event event;
-        try {
-        
-            event = Webhook.constructEvent(payload, sigHeader, ENDPOINT_SECRET);
-            log.info("✅ Received event type: {}", event.getType());
-            
-            
-            log.debug("📄 Full event data: {}", event.toJson());
+    Event event;
+    try {
+      event = Webhook.constructEvent(payload, sigHeader, ENDPOINT_SECRET);
+      log.info("✅ Received event type: {}", event.getType());
 
-            
-            switch (event.getType()) {
-                case "checkout.session.completed":
-                    handleCheckoutSessionCompleted(event);
-                    saveEventToMongoDB(event);
-                    break;
-                case "payment_intent.succeeded":
-                    handlePaymentIntentSucceeded(event);
-                    break;
-                case "charge.succeeded":
-                    handleChargeSucceeded(event);
-                    
-                    break;
-                case "charge.updated":
-                    handleChargeUpdated(event);
-                    // saveEventToMongoDB(event);
-                    break;
-                default:
-                    log.info("🔄 Unhandled event type: {}", event.getType());
-                    break;
-            }
+      log.debug("📄 Full event data: {}", event.toJson());
 
-            return ResponseEntity.ok("Webhook processed successfully");
+      switch (event.getType()) {
+        case "checkout.session.completed":
+          handleCheckoutSessionCompleted(event);
+          saveEventToMongoDB(event);
+          break;
+        case "payment_intent.succeeded":
+          handlePaymentIntentSucceeded(event);
+          break;
+        case "charge.succeeded":
+          handleChargeSucceeded(event);
 
-        } catch (Exception e) {
-            log.error("⚠️ Error handling webhook", e);
-            return ResponseEntity.badRequest().body("Error processing webhook: " + e.getMessage());
-        }
+          break;
+        case "charge.updated":
+          handleChargeUpdated(event);
+          // saveEventToMongoDB(event);
+          break;
+        default:
+          log.info("🔄 Unhandled event type: {}", event.getType());
+          break;
+      }
+
+      return ResponseEntity.ok("Webhook processed successfully");
+    } catch (Exception e) {
+      log.error("⚠️ Error handling webhook", e);
+      return ResponseEntity.badRequest()
+        .body("Error processing webhook: " + e.getMessage());
+    }
+  }
+
+  private void saveEventToMongoDB(Event event) {
+    if (paymentRepository.existsByEventId(event.getId())) {
+      log.info("⏩ Event {} already processed, skipping", event.getId());
+      return;
     }
 
-    private void saveEventToMongoDB(Event event) {
-        if (paymentRepository.existsByEventId(event.getId())) {
-            log.info("⏩ Event {} already processed, skipping", event.getId());
-            return;
-        }
+    Payment document = new Payment();
+    document.setEventId(event.getId());
+    document.setType(event.getType());
+    document.setData(event.getData());
+    document.setCreated(new Date(event.getCreated() * 1000L));
 
-        Payment document = new Payment();
-        document.setEventId(event.getId());
-        document.setType(event.getType());
-        document.setData(event.getData());
-        document.setCreated(new Date(event.getCreated() * 1000L));
+    paymentRepository.save(document);
+    log.info("💾 Saved event {} to MongoDB", event.getId());
+  }
 
-        paymentRepository.save(document);
-        log.info("💾 Saved event {} to MongoDB", event.getId());
+  private void handleCheckoutSessionCompleted(Event event)
+    throws StripeException {
+    log.info("💰 Handling checkout.session.completed event");
+
+    EventDataObjectDeserializer dataObjectDeserializer =
+      event.getDataObjectDeserializer();
+    if (dataObjectDeserializer.getObject().isEmpty()) {
+      log.warn("⚠️ No data object found in checkout.session.completed event");
+      return;
     }
 
+    StripeObject stripeObject = dataObjectDeserializer.getObject().get();
 
-    private void handleCheckoutSessionCompleted(Event event) throws StripeException {
-        log.info("💰 Handling checkout.session.completed event");
+    if (stripeObject instanceof Session) {
+      Session session = (Session) stripeObject;
+      log.info("🛒 Checkout Session Details:");
+      log.info("  - Session ID: {}", session.getId());
+      log.info("  - Payment Status: {}", session.getPaymentStatus());
+      log.info(
+        "  - Customer Email: {}",
+        session.getCustomerDetails().getEmail()
+      );
+      log.info(
+        "  - Amount: {} {}",
+        session.getAmountTotal() / 100.0,
+        session.getCurrency()
+      );
+      log.info("  - Payment Intent ID: {}", session.getPaymentIntent());
+      // Here you would typically update your database and fulfill the order
+    } else {
+      log.warn(
+        "⚠️ Expected Session object but got: {}",
+        stripeObject.getClass()
+      );
+    }
+  }
 
-        EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-        if (dataObjectDeserializer.getObject().isEmpty()) {
-            log.warn("⚠️ No data object found in checkout.session.completed event");
-            return;
-        }
+  private void handlePaymentIntentSucceeded(Event event)
+    throws StripeException {
+    log.info("💳 Handling payment_intent.succeeded event");
 
-        StripeObject stripeObject = dataObjectDeserializer.getObject().get();
-
-        if (stripeObject instanceof Session) {
-            Session session = (Session) stripeObject;
-            log.info("🛒 Checkout Session Details:");
-            log.info("  - Session ID: {}", session.getId());
-            log.info("  - Payment Status: {}", session.getPaymentStatus());
-            log.info("  - Customer Email: {}", session.getCustomerDetails().getEmail());
-            log.info("  - Amount: {} {}", session.getAmountTotal() / 100.0, session.getCurrency());
-            log.info("  - Payment Intent ID: {}", session.getPaymentIntent());
-
-            // Here you would typically update your database and fulfill the order
-        } else {
-            log.warn("⚠️ Expected Session object but got: {}", stripeObject.getClass());
-        }
+    EventDataObjectDeserializer dataObjectDeserializer =
+      event.getDataObjectDeserializer();
+    if (dataObjectDeserializer.getObject().isEmpty()) {
+      log.warn("⚠️ No data object found in payment_intent.succeeded event");
+      return;
     }
 
-    private void handlePaymentIntentSucceeded(Event event) throws StripeException {
-        log.info("💳 Handling payment_intent.succeeded event");
+    StripeObject stripeObject = dataObjectDeserializer.getObject().get();
 
-        EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-        if (dataObjectDeserializer.getObject().isEmpty()) {
-            log.warn("⚠️ No data object found in payment_intent.succeeded event");
-            return;
-        }
+    if (stripeObject instanceof PaymentIntent) {
+      PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
+      log.info("💵 Payment Intent Details:");
+      log.info("  - ID: {}", paymentIntent.getId());
+      log.info(
+        "  - Amount: {} {}",
+        paymentIntent.getAmount() / 100.0,
+        paymentIntent.getCurrency()
+      );
+      log.info("  - Status: {}", paymentIntent.getStatus());
+      log.info("  - Charge ID: {}", paymentIntent.getLatestCharge());
 
-        StripeObject stripeObject = dataObjectDeserializer.getObject().get();
+      if (paymentIntent.getLatestCharge() != null) {
+        Charge charge = Charge.retrieve(paymentIntent.getLatestCharge());
+        log.info("  - Charge Status: {}", charge.getStatus());
+        log.info("  - Receipt URL: {}", charge.getReceiptUrl());
+      }
+    } else {
+      log.warn(
+        "⚠️ Expected PaymentIntent object but got: {}",
+        stripeObject.getClass()
+      );
+    }
+  }
 
-        if (stripeObject instanceof PaymentIntent) {
-            PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
-            log.info("💵 Payment Intent Details:");
-            log.info("  - ID: {}", paymentIntent.getId());
-            log.info("  - Amount: {} {}", paymentIntent.getAmount() / 100.0, paymentIntent.getCurrency());
-            log.info("  - Status: {}", paymentIntent.getStatus());
-            log.info("  - Charge ID: {}", paymentIntent.getLatestCharge());
+  private void handleChargeSucceeded(Event event) throws StripeException {
+    log.info("🔋 Handling charge.succeeded event");
 
-            if (paymentIntent.getLatestCharge() != null) {
-                Charge charge = Charge.retrieve(paymentIntent.getLatestCharge());
-                log.info("  - Charge Status: {}", charge.getStatus());
-                log.info("  - Receipt URL: {}", charge.getReceiptUrl());
-            }
-        } else {
-            log.warn("⚠️ Expected PaymentIntent object but got: {}", stripeObject.getClass());
-        }
+    EventDataObjectDeserializer dataObjectDeserializer =
+      event.getDataObjectDeserializer();
+    if (dataObjectDeserializer.getObject().isEmpty()) {
+      log.warn("⚠️ No data object found in charge.succeeded event");
+      return;
     }
 
-    private void handleChargeSucceeded(Event event) throws StripeException {
-        log.info("🔋 Handling charge.succeeded event");
+    StripeObject stripeObject = dataObjectDeserializer.getObject().get();
 
-        EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-        if (dataObjectDeserializer.getObject().isEmpty()) {
-            log.warn("⚠️ No data object found in charge.succeeded event");
-            return;
-        }
+    if (stripeObject instanceof Charge) {
+      Charge charge = (Charge) stripeObject;
+      log.info("⚡ Charge Details:");
+      log.info("  - ID: {}", charge.getId());
+      log.info(
+        "  - Amount: {} {}",
+        charge.getAmount() / 100.0,
+        charge.getCurrency()
+      );
+      log.info("  - Paid: {}", charge.getPaid());
+      log.info("  - Receipt URL: {}", charge.getReceiptUrl());
+      log.info("  - Payment Method: {}", charge.getPaymentMethod());
+    } else {
+      log.warn(
+        "⚠️ Expected Charge object but got: {}",
+        stripeObject.getClass()
+      );
+    }
+  }
 
-        StripeObject stripeObject = dataObjectDeserializer.getObject().get();
+  private void handleChargeUpdated(Event event) throws StripeException {
+    log.info("🔄 Handling charge.updated event");
 
-        if (stripeObject instanceof Charge) {
-            Charge charge = (Charge) stripeObject;
-            log.info("⚡ Charge Details:");
-            log.info("  - ID: {}", charge.getId());
-            log.info("  - Amount: {} {}", charge.getAmount() / 100.0, charge.getCurrency());
-            log.info("  - Paid: {}", charge.getPaid());
-            log.info("  - Receipt URL: {}", charge.getReceiptUrl());
-            log.info("  - Payment Method: {}", charge.getPaymentMethod());
-        } else {
-            log.warn("⚠️ Expected Charge object but got: {}", stripeObject.getClass());
-        }
+    EventDataObjectDeserializer dataObjectDeserializer =
+      event.getDataObjectDeserializer();
+    if (dataObjectDeserializer.getObject().isEmpty()) {
+      log.warn("⚠️ No data object found in charge.updated event");
+      return;
     }
 
-    private void handleChargeUpdated(Event event) throws StripeException {
-        log.info("🔄 Handling charge.updated event");
+    StripeObject stripeObject = dataObjectDeserializer.getObject().get();
 
-        EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-        if (dataObjectDeserializer.getObject().isEmpty()) {
-            log.warn("⚠️ No data object found in charge.updated event");
-            return;
-        }
+    if (stripeObject instanceof Charge) {
+      Charge charge = (Charge) stripeObject;
+      log.info("♻️ Updated Charge Details:");
+      log.info("  - ID: {}", charge.getId());
+      log.info("  - Status: {}", charge.getStatus());
+      log.info("  - Captured: {}", charge.getCaptured());
 
-        StripeObject stripeObject = dataObjectDeserializer.getObject().get();
-
-        if (stripeObject instanceof Charge) {
-            Charge charge = (Charge) stripeObject;
-            log.info("♻️ Updated Charge Details:");
-            log.info("  - ID: {}", charge.getId());
-            log.info("  - Status: {}", charge.getStatus());
-            log.info("  - Captured: {}", charge.getCaptured());
-
-            if ("succeeded".equals(charge.getStatus())) {
-                log.info("✅ Payment was successfully captured");
-            }
-        } else {
-            log.warn("⚠️ Expected Charge object but got: {}", stripeObject.getClass());
-        }
+      if ("succeeded".equals(charge.getStatus())) {
+        log.info("✅ Payment was successfully captured");
+      }
+    } else {
+      log.warn(
+        "⚠️ Expected Charge object but got: {}",
+        stripeObject.getClass()
+      );
     }
+  }
 }
