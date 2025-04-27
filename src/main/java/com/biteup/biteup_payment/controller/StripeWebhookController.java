@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class StripeWebhookController {
 
   private static final String ENDPOINT_SECRET =
-    "whsec_0190a4ce93bc603b89e4add930134438544e02b373a9fa0d3c20b08c12679318";
+    "whsec_14b9eff64c11d77cdc1c0def8ae4ac4c8c6dd74a9251afde5d0c36e746807394";
   private final PaymentRepository paymentRepository;
 
   @PostMapping("/webhook")
