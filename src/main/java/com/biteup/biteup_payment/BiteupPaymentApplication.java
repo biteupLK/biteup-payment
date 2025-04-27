@@ -14,7 +14,7 @@ public class BiteupPaymentApplication {
         SpringApplication.run(BiteupPaymentApplication.class, args);
 
         // Set your secret key
-        Stripe.apiKey = "sk_test_51RA2a4C76phfCMf6OdrHfZZtP8vaQafaBP5c5988F8Ca1rpMk23mtIQu5ZiUr925gHYUZQnKnDJ5QGqL3sXXtgrg00vjKWy3dx";
+        Stripe.apiKey = "sk_test_51RIZzqCFsCAVHXK7796CxkJ5W5ZZBUiBeRM5yN3opVphk7UxeUcmVrmhgjjHawZrjTprOqQYjQEzc0AEWGyOlUix00sWXCHSFk";
 
         // The session ID you received
         String sessionId = "cs_test_a1caz0rMtGX2vkNr82kx5apy55WiLIYvtMLsf9aK57Z7o28aP1cTyaM1Gf";
