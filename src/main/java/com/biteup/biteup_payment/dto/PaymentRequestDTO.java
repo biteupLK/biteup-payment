@@ -15,5 +15,6 @@ public class PaymentRequestDTO {
     private Double amount;
     private String email;
     private String customerPhone;
+    private String restaurantEmail;
     private String signedUrl;
 }

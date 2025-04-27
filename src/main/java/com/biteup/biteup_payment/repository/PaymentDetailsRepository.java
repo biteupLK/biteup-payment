@@ -10,4 +10,7 @@ import com.biteup.biteup_payment.Entity.PaymentDetails;
 public interface PaymentDetailsRepository extends MongoRepository<PaymentDetails, String>{
     @Query("{ 'data.object.members.metadata.members.receipt_email.value' : ?0 }")
     List<PaymentDetails> findByReceiptEmailValue(String email);
+
+    @Query("{ 'data.object.members.metadata.members.restaurantEmail.value' : ?0 }")
+    List<PaymentDetails> findByRestaurantEmailValue(String email);
 }

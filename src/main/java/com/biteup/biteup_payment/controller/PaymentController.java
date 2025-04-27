@@ -39,6 +39,13 @@ public class PaymentController {
   }
 
   @GetMapping("/{email}/get")
+  public List<PaymentDetails> getEventsByUserEmail(
+    @PathVariable String email
+  ) {
+    return paymentService.getEventsByUserEmail(email);
+  }
+
+  @GetMapping("/{email}/get/restaurant-order")
   public List<PaymentDetails> getEventsByRestaurantEmail(
     @PathVariable String email
   ) {

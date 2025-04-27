@@ -63,7 +63,8 @@ public class PaymentService {
       )
       .putMetadata("receipt_email", req.getEmail())
       .putMetadata("phone", req.getCustomerPhone())
-      .putMetadata("restaurantEmail", req.getCustomerPhone())
+      .putMetadata("restaurantEmail", req.getRestaurantEmail())
+      .putMetadata("cus_mobile", req.getCustomerPhone())
       .putMetadata("foodName", req.getFoodName())
       .build();
 
@@ -74,7 +75,11 @@ public class PaymentService {
     return Map.of("id", session.getId());
   }
 
-  public List<PaymentDetails> getEventsByRestaurantEmail(String email) {
+  public List<PaymentDetails> getEventsByUserEmail(String email) {
     return paymentDetailsRepository.findByReceiptEmailValue(email);
+  }
+
+  public List<PaymentDetails> getEventsByRestaurantEmail(String email) {
+    return paymentDetailsRepository.findByRestaurantEmailValue(email);
   }
 }
