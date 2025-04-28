@@ -53,7 +53,7 @@ public class StripeWebhookController {
           break;
         case "charge.updated":
           handleChargeUpdated(event);
-          // saveEventToMongoDB(event);
+          saveEventToMongoDB(event);
           break;
         default:
           log.info("🔄 Unhandled event type: {}", event.getType());

@@ -96,14 +96,14 @@ public class PaymentWebSocketController {
                     .getMembers();
             Map<String, Object> paymentData = new HashMap<>();
             paymentData.put("paymentStatus", getValue(members.getPayment_status()));
-            paymentData.put("amount", getNestedValue(members.getAmount_total()));
+            paymentData.put("amount", getNestedValue(members.getAmount()));
             paymentData.put("currency", getValue(members.getCurrency()));
             paymentData.put("paymentIntent", getValue(members.getPayment_intent()));
             
-            if (members.getCustomer_details() != null &&
-                    members.getCustomer_details().getMembers() != null) {
+            if (members.getBilling_details() != null &&
+                    members.getBilling_details().getMembers() != null) {
                 PaymentDetails.CustomerMembers customerMembers = members
-                        .getCustomer_details()
+                        .getBilling_details()
                         .getMembers();
 
                 Map<String, Object> customer = new HashMap<>();

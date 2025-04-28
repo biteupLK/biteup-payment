@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class PaymentService {
 
-        private final PaymentDetailsRepository paymentDetailsRepository;
+  private final PaymentDetailsRepository paymentDetailsRepository;
 
   public Map<String, Object> createCheckoutSession(PaymentRequestDTO req)
     throws StripeException {
@@ -41,6 +41,16 @@ public class PaymentService {
       .setCustomer(customer.getId())
       .setSuccessUrl("http://localhost:5175/myOrders")
       .setCancelUrl("http://localhost:5175/OrderCancelled")
+      .setPaymentIntentData(
+        SessionCreateParams.PaymentIntentData.builder()
+          .setReceiptEmail(req.getEmail())
+          .putMetadata("phone", req.getCustomerPhone())
+          .putMetadata("restaurantEmail", req.getRestaurantEmail())
+          .putMetadata("receipt_email", req.getEmail())
+          .putMetadata("cus_mobile", req.getCustomerPhone())
+          .putMetadata("foodName", req.getFoodName())
+          .build()
+      )
       .addLineItem(
         SessionCreateParams.LineItem.builder()
           .setPriceData(
@@ -61,14 +71,12 @@ public class PaymentService {
           .setQuantity(1L)
           .build()
       )
-      .putMetadata("receipt_email", req.getEmail())
       .putMetadata("phone", req.getCustomerPhone())
       .putMetadata("restaurantEmail", req.getRestaurantEmail())
+      .putMetadata("receipt_email", req.getEmail())
       .putMetadata("cus_mobile", req.getCustomerPhone())
       .putMetadata("foodName", req.getFoodName())
       .build();
-
-    // Create session
     Session session = Session.create(params);
     log.info("Checkout session created successfully: {}", session.getId());
 
