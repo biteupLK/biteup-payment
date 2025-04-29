@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class PaymentService {
 
-        private final PaymentDetailsRepository paymentDetailsRepository;
+  private final PaymentDetailsRepository paymentDetailsRepository;
 
   public Map<String, Object> createCheckoutSession(PaymentRequestDTO req)
     throws StripeException {
@@ -41,6 +41,17 @@ public class PaymentService {
       .setCustomer(customer.getId())
       .setSuccessUrl("http://localhost:5175/myOrders")
       .setCancelUrl("http://localhost:5175/OrderCancelled")
+      .setPaymentIntentData(
+        SessionCreateParams.PaymentIntentData.builder()
+          .setReceiptEmail(req.getEmail())
+          .putMetadata("phone", req.getCustomerPhone())
+          .putMetadata("restaurantEmail", req.getRestaurantEmail())
+          .putMetadata("receipt_email", req.getEmail())
+          .putMetadata("cus_mobile", req.getCustomerPhone())
+          .putMetadata("signedUrl", req.getSignedUrl())
+          .putMetadata("foodName", req.getFoodName())
+          .build()
+      )
       .addLineItem(
         SessionCreateParams.LineItem.builder()
           .setPriceData(
@@ -61,20 +72,24 @@ public class PaymentService {
           .setQuantity(1L)
           .build()
       )
-      .putMetadata("receipt_email", req.getEmail())
       .putMetadata("phone", req.getCustomerPhone())
-      .putMetadata("restaurantEmail", req.getCustomerPhone())
+      .putMetadata("restaurantEmail", req.getRestaurantEmail())
+      .putMetadata("receipt_email", req.getEmail())
+      .putMetadata("cus_mobile", req.getCustomerPhone())
       .putMetadata("foodName", req.getFoodName())
+      .putMetadata("signedUrl", req.getSignedUrl())
       .build();
-
-    // Create session
     Session session = Session.create(params);
     log.info("Checkout session created successfully: {}", session.getId());
 
     return Map.of("id", session.getId());
   }
 
-  public List<PaymentDetails> getEventsByRestaurantEmail(String email) {
+  public List<PaymentDetails> getEventsByUserEmail(String email) {
     return paymentDetailsRepository.findByReceiptEmailValue(email);
+  }
+
+  public List<PaymentDetails> getEventsByRestaurantEmail(String email) {
+    return paymentDetailsRepository.findByRestaurantEmailValue(email);
   }
 }

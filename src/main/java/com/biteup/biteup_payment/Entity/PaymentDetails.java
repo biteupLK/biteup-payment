@@ -35,16 +35,17 @@ public class PaymentDetails {
     private ValueWrapper billing_address_collection;
     private ValueWrapper cancel_url;
     private ValueWrapper currency;
+    private ValueWrapper receipt_url;
     private ValueWrapper customer;
     private ValueWrapper payment_status;
     private ValueWrapper success_url;
     private ValueWrapper mode;
     private NestedValueWrapper amount_subtotal;
-    private NestedValueWrapper amount_total;
+    private NestedValueWrapper amount;
     private ValueWrapper payment_intent;
     private Object currencyObject;
     private Metadata metadata;
-    private CustomerDetails customer_details;
+    private CustomerDetails billing_details;
     private TotalDetails total_details;
   }
 
@@ -79,6 +80,7 @@ public class PaymentDetails {
     private ValueWrapper receipt_email;
     private ValueWrapper restaurantEmail;
     private ValueWrapper phone;
+    private ValueWrapper signedUrl;
   }
 
   @Data
