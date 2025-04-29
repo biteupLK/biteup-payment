@@ -42,7 +42,7 @@ public class StripeWebhookController {
       switch (event.getType()) {
         case "checkout.session.completed":
           handleCheckoutSessionCompleted(event);
-          saveEventToMongoDB(event);
+          // saveEventToMongoDB(event);
           break;
         case "payment_intent.succeeded":
           handlePaymentIntentSucceeded(event);

@@ -48,6 +48,7 @@ public class PaymentService {
           .putMetadata("restaurantEmail", req.getRestaurantEmail())
           .putMetadata("receipt_email", req.getEmail())
           .putMetadata("cus_mobile", req.getCustomerPhone())
+          .putMetadata("signedUrl", req.getSignedUrl())
           .putMetadata("foodName", req.getFoodName())
           .build()
       )
@@ -76,6 +77,7 @@ public class PaymentService {
       .putMetadata("receipt_email", req.getEmail())
       .putMetadata("cus_mobile", req.getCustomerPhone())
       .putMetadata("foodName", req.getFoodName())
+      .putMetadata("signedUrl", req.getSignedUrl())
       .build();
     Session session = Session.create(params);
     log.info("Checkout session created successfully: {}", session.getId());

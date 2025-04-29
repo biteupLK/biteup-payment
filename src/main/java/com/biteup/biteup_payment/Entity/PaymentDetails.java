@@ -80,6 +80,7 @@ public class PaymentDetails {
     private ValueWrapper receipt_email;
     private ValueWrapper restaurantEmail;
     private ValueWrapper phone;
+    private ValueWrapper signedUrl;
   }
 
   @Data
